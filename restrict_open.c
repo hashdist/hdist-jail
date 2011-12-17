@@ -3,6 +3,39 @@
 #include <sys/types.h>
 #include <dlfcn.h>
 #include <stdarg.h>
+#include <string.h>
+
+// Explicitly allow
+char *allowed[] = {
+    "/usr/include/_G_config.h",
+    "/usr/include/dlfcn.h",
+    "/usr/include/stdio.h",
+    "/usr/include/endian.h",
+    "/usr/include/features.h",
+    "/usr/include/libio.h",
+    "/usr/include/string.h",
+    "/usr/include/time.h",
+    "/usr/include/xlocale.h",
+    "/usr/include/wchar.h",
+    "/usr/lib/gcc/",
+    "/usr/include/x86_64-linux-gnu/",
+    "/tmp",
+};
+#define Nallowed sizeof(allowed) / sizeof(char*)
+
+// Forbid silently
+char *ignore[] = {
+    "/usr/local/include/",
+};
+#define Nignore sizeof(ignore) / sizeof(char*)
+
+// Forbid and report
+char *forbidden[] = {
+    "/usr",
+    "/",
+};
+#define Nforbidden sizeof(forbidden) / sizeof(char*)
+
 
 
 /*
@@ -12,7 +45,22 @@ Returns 1 if it can, 0 if it cannot.
 */
 int can_open(const char *pathname)
 {
-    printf("file: %s\n", pathname);
+    int i;
+    for (i=0; i < Nallowed; i++) {
+        if (strncmp(pathname, allowed[i], strlen(allowed[i])) == 0)
+            return 1;
+    }
+    for (i=0; i < Nignore; i++) {
+        if (strncmp(pathname, ignore[i], strlen(ignore[i])) == 0)
+            return 0;
+    }
+    for (i=0; i < Nforbidden; i++) {
+        if (strncmp(pathname, forbidden[i], strlen(forbidden[i])) == 0) {
+            printf("RESTRICT: %s (due to '%s')\n", pathname, forbidden[i]);
+            return 0;
+        }
+    }
+    printf("Local file: %s\n", pathname);
     return 1;
 }
 
