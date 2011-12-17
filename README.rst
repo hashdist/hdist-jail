@@ -10,3 +10,8 @@ Examples of usage::
 
     LD_PRELOAD=./restrict.so touch test_file
     LD_PRELOAD=./restrict.so cat test_file
+
+License
+-------
+
+All code in this package is released under the MIT license.
