@@ -2,5 +2,8 @@
 
 set -e
 
-gcc -fPIC -Wall -c restrict_open.c -o restrict_open.o
-gcc -shared -o restrict.so restrict_open.o
+cython res.pyx
+gcc -fPIC -Wall -c res.c -o res.o -I$SPKG_LOCAL/include/python2.6/
+
+gcc -fPIC -Wall -c restrict_open.c -o restrict_open.o -I$SPKG_LOCAL/include/python2.6/
+gcc -shared -o restrict.so restrict_open.o res.o -lpython2.6
