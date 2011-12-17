@@ -1,0 +1,4 @@
+#! /bin/bash
+
+# Compile itself with preload:
+LD_PRELOAD=./restrict.so ./compile &> log

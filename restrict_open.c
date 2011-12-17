@@ -1,30 +1,69 @@
-#include "res_api.h"
-
+#define _GNU_SOURCE
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/syscall.h>
 #include <sys/types.h>
+#include <dlfcn.h>
+#include <stdarg.h>
 
-void initres(void); /*proto*/
 
-int python_initialized=0;
+/*
+Tests if 'pathname' can be opened.
 
-int open(const char *pathname, int flags, mode_t mode)
+Returns 1 if it can, 0 if it cannot.
+*/
+int can_open(const char *pathname)
 {
-    if (!python_initialized) {
-        Py_Initialize();
-        initres();
-        if (import_res()) {
-            printf("Python failed to initialize, aborting...\n");
-            abort();
-        }
-        python_initialized = 1;
+    printf("file: %s\n", pathname);
+    return 1;
+}
+
+int open(const char *pathname, int flags, ...)
+{
+    static int (*_open)(const char *, int, mode_t) = NULL;
+    mode_t mode;
+    va_list vl;
+    va_start(vl, flags);
+    mode = va_arg(vl, mode_t);
+    va_end(vl);
+
+    if (!_open) {
+        _open = dlsym(RTLD_NEXT, "open");
     }
     if (can_open(pathname)) {
-        return syscall(SYS_open, pathname, flags, mode);
+        return _open(pathname, flags, mode);
     } else {
-        printf("Not allowed to open file: %s\n", pathname);
-        abort();
+        return -1;
+    }
+}
+
+int open64(const char *pathname, int flags, ...)
+{
+    static int (*_open64)(const char *, int, mode_t) = NULL;
+    mode_t mode;
+    va_list vl;
+    va_start(vl, flags);
+    mode = va_arg(vl, mode_t);
+    va_end(vl);
+
+    if (!_open64) {
+        _open64 = dlsym(RTLD_NEXT, "open64");
+    }
+    if (can_open(pathname)) {
+        return _open64(pathname, flags, mode);
+    } else {
+        return -1;
+    }
+}
+
+FILE *fopen(const char *pathname, const char *mode)
+{
+    static FILE *(*_fopen)(const char *, const char *) = NULL;
+
+    if (!_fopen) {
+        _fopen = dlsym(RTLD_NEXT, "fopen");
+    }
+    if (can_open(pathname)) {
+        return _fopen(pathname, mode);
+    } else {
+        return NULL;
     }
 }
