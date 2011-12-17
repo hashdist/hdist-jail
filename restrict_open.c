@@ -32,7 +32,6 @@ char *ignore[] = {
 // Forbid and report
 char *forbidden[] = {
     "/usr",
-    "/",
 };
 #define Nforbidden sizeof(forbidden) / sizeof(char*)
 
@@ -60,7 +59,7 @@ int can_open(const char *pathname)
             return 0;
         }
     }
-    printf("Local file: %s\n", pathname);
+//    printf("Local file: %s\n", pathname);
     return 1;
 }
 
