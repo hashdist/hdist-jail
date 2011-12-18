@@ -162,6 +162,10 @@ char *allowed[] = {
     "/dev/urandom",
     "/lib/charset.alias",
     "/usr/bin/install",
+    "/usr/include/c++/",
+    "/etc/termcap",
+    "/etc/ld.so.conf",
+    "/etc/inputrc",
 
 // TODO: we need to do this automatically somehow:
     "/home/ondrej/",
