@@ -300,6 +300,8 @@ char *allowed[] = {
 // Forbid silently
 char *ignore[] = {
     "/usr/local/",
+    "/usr/x86_64-linux-gnu",
+    "/usr/gnu",
     "/etc/passwd",
     "/etc/group",
 };
@@ -343,6 +345,9 @@ int can_open(const char *pathname)
     for (i=0; i < Nallowed; i++) {
         if (strncmp(fullpath, allowed[i], strlen(allowed[i])) == 0)
             return 1;
+        // Also accessing any subpaths is ok:
+        if (strncmp(allowed[i], fullpath, strlen(fullpath)) == 0)
+            return 1;
     }
     for (i=0; i < Nignore; i++) {
         if (strncmp(fullpath, ignore[i], strlen(ignore[i])) == 0)
@@ -350,12 +355,14 @@ int can_open(const char *pathname)
     }
 
     // Special case for stat(). This is ok:
+    /*
     if (strcmp(fullpath, "/usr/include") == 0)
         return 1;
     if (strcmp(fullpath, "/usr/lib") == 0)
         return 1;
     if (strcmp(fullpath, "/usr/include/x86_64-linux-gnu") == 0)
         return 1;
+        */
 
     for (i=0; i < Nforbidden; i++) {
         if (strncmp(fullpath, forbidden[i], strlen(forbidden[i])) == 0) {
