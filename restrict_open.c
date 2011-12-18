@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <stdarg.h>
 #include <string.h>
 
@@ -68,8 +69,14 @@ Returns 1 if it can, 0 if it cannot.
 */
 int can_open(const char *pathname)
 {
+    static int logfd=-1;
+    static int (*_open)(const char *, int, mode_t) = NULL;
     int i;
     char fullpath[MAX_PATH];
+    if (logfd == -1) {
+        _open = dlsym(RTLD_NEXT, "open");
+        logfd = _open("/tmp/access.log", O_WRONLY|O_APPEND|O_CREAT, 0666);
+    }
     expand_path(pathname, fullpath);
     for (i=0; i < Nallowed; i++) {
         if (strncmp(fullpath, allowed[i], strlen(allowed[i])) == 0)
@@ -81,11 +88,16 @@ int can_open(const char *pathname)
     }
     for (i=0; i < Nforbidden; i++) {
         if (strncmp(fullpath, forbidden[i], strlen(forbidden[i])) == 0) {
-            printf("RESTRICT: %s (due to '%s')\n", fullpath, forbidden[i]);
+            if (logfd != -1) {
+                dprintf(logfd, "RESTRICT: %s (due to '%s')\n", fullpath,
+                        forbidden[i]);
+            }
             return 0;
         }
     }
-//    printf("Local file: %s\n", fullpath);
+    if (logfd != -1) {
+        dprintf(logfd, "Local file: %s\n", fullpath);
+    }
     return 1;
 }
 
