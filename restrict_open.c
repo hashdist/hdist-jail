@@ -157,6 +157,8 @@ char *allowed[] = {
 
 // gcc:
     "/usr/bin/gcc",
+    "/usr/bin/g++",
+    "/usr/bin/gfortran",
     "/usr/bin/ld",
 
 // others:
@@ -174,6 +176,7 @@ char *allowed[] = {
     "/etc/ld.so.conf",
     "/etc/inputrc",
     "/proc",
+    "/lib",
 
     "/bin/sed",
     "/bin/tar",
@@ -181,6 +184,7 @@ char *allowed[] = {
     "/bin/dash",
     "/bin/hostname",
     "/bin/bash",
+    "/usr/bin/make",
 
 // coreutils:
     "/bin/cat",
@@ -211,7 +215,6 @@ char *allowed[] = {
     "/bin/true",
     "/bin/uname",
     "/bin/mktemp",
-    "/usr/bin",
     "/usr/bin/install",
     "/usr/bin/hostid",
     "/usr/bin/nice",
