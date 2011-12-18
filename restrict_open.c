@@ -492,3 +492,18 @@ int __xstat64(int x, const char *filename, struct stat64 *st)
         return -1;
     }
 }
+
+int access(const char *pathname, int mode)
+{
+    static int (*_access)(const char *pathname, int mode);
+
+    if (!_access) {
+        _access = dlsym(RTLD_NEXT, "access");
+    }
+
+    if (can_open(pathname)) {
+        return _access(pathname, mode);
+    } else {
+        return -1;
+    }
+}
