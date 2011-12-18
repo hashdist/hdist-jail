@@ -154,18 +154,20 @@ char *allowed[] = {
     "/usr/include/xen/",
 
 // others:
+    "/usr/include/c++/",
     "/usr/lib/gcc/",
     "/usr/lib/x86_64-linux-gnu",
+    "/usr/lib/i386-linux-gnu",
     "/tmp",
     "/dev/null",
     "/dev/tty",
     "/dev/urandom",
     "/lib/charset.alias",
     "/usr/bin/install",
-    "/usr/include/c++/",
     "/etc/termcap",
     "/etc/ld.so.conf",
     "/etc/inputrc",
+    "/proc",
 
 // TODO: we need to do this automatically somehow:
     "/home/ondrej/",
