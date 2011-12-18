@@ -169,6 +169,10 @@ char *allowed[] = {
     "/etc/inputrc",
     "/proc",
 
+// gcc:
+    "/usr/bin/gcc",
+    "/usr/bin/ld",
+
 // TODO: we need to do this automatically somehow:
     "/home/ondrej/",
 };
