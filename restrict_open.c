@@ -343,6 +343,11 @@ int can_open(const char *pathname)
         if (strncmp(fullpath, ignore[i], strlen(ignore[i])) == 0)
             return 0;
     }
+
+    // Special case for stat(). This is ok:
+    if (strcmp(fullpath, "/usr/include") == 0)
+        return 1;
+
     for (i=0; i < Nforbidden; i++) {
         if (strncmp(fullpath, forbidden[i], strlen(forbidden[i])) == 0) {
             if (logfd != -1) {
