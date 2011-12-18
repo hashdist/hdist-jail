@@ -9,6 +9,8 @@
 #include <string.h>
 #include <limits.h>
 
+//#define DEBUG
+
 // Explicitly allow
 char *allowed[] = {
 // libc6 includes:
