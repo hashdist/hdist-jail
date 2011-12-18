@@ -142,8 +142,18 @@ char *allowed[] = {
     "/usr/include/libgen.h",
     "/usr/include/argz.h",
 
-// others:
+// linux-libc
+    "/usr/include/drm/",
+    "/usr/include/sound/",
+    "/usr/include/rdma/",
+    "/usr/include/x86_64-linux-gnu/",
+    "/usr/include/video/",
+    "/usr/include/asm-generic/",
+    "/usr/include/mtd/",
     "/usr/include/linux/",
+    "/usr/include/xen/",
+
+// others:
     "/usr/lib/gcc/",
     "/usr/lib/x86_64-linux-gnu",
     "/tmp",
