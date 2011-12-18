@@ -291,3 +291,45 @@ FILE *fopen(const char *pathname, const char *mode)
         return NULL;
     }
 }
+
+int execve(const char *filename, char *const argv[], char *const envp[])
+{
+    static int (*_execve)(const char *, char *const argv[], char *const envp[]);
+
+    if (!_execve) {
+        _execve = dlsym(RTLD_NEXT, "execve");
+    }
+    if (can_open(filename)) {
+        return _execve(filename, argv, envp);
+    } else {
+        return -1;
+    }
+}
+
+int execvp(const char *filename, char *const argv[])
+{
+    static int (*_execvp)(const char *, char *const argv[]);
+
+    if (!_execvp) {
+        _execvp = dlsym(RTLD_NEXT, "execvp");
+    }
+    if (can_open(filename)) {
+        return _execvp(filename, argv);
+    } else {
+        return -1;
+    }
+}
+
+int execv(const char *filename, char *const argv[])
+{
+    static int (*_execv)(const char *, char *const argv[]);
+
+    if (!_execv) {
+        _execv = dlsym(RTLD_NEXT, "execv");
+    }
+    if (can_open(filename)) {
+        return _execv(filename, argv);
+    } else {
+        return -1;
+    }
+}
