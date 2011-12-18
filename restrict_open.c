@@ -174,6 +174,10 @@ char *allowed[] = {
     "/proc",
 
     "/bin/sed",
+    "/bin/tar",
+    "/bin/grep",
+    "/bin/dash",
+    "/bin/hostname",
 
 // coreutils:
     "/bin/cat",
