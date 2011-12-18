@@ -18,6 +18,7 @@ char *allowed[] = {
     "/usr/include/stdlib.h",
     "/usr/include/endian.h",
     "/usr/include/features.h",
+    "/usr/include/fcntl.h",
     "/usr/include/getopt.h",
     "/usr/include/libio.h",
     "/usr/include/string.h",
