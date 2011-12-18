@@ -177,6 +177,8 @@ char *allowed[] = {
 // Forbid silently
 char *ignore[] = {
     "/usr/local/include/",
+    "/etc/passwd",
+    "/etc/group",
 };
 #define Nignore sizeof(ignore) / sizeof(char*)
 
