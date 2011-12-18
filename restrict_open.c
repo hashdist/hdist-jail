@@ -178,6 +178,7 @@ char *allowed[] = {
     "/bin/grep",
     "/bin/dash",
     "/bin/hostname",
+    "/bin/bash",
 
 // coreutils:
     "/bin/cat",
@@ -444,6 +445,39 @@ int execv(const char *filename, char *const argv[])
     }
     if (can_open(filename)) {
         return _execv(filename, argv);
+    } else {
+        return -1;
+    }
+}
+
+// These are stat() and stat64() functions, that internally in GNU libc() are
+// implemented as __xstat and __xstat64. See:
+// http://stackoverflow.com/questions/5478780/c-and-ld-preload-open-and-open64-calls-intercepted-but-not-stat64
+
+int __xstat(int x, const char *filename, struct stat *st)
+{
+    static int (*__xstat2)(int x, const char *, struct stat *);
+
+    if (!__xstat2) {
+        __xstat2 = dlsym(RTLD_NEXT, "__xstat");
+    }
+    if (can_open(filename)) {
+        return __xstat2(x, filename, st);
+    } else {
+        return -1;
+    }
+}
+
+int __xstat64(int x, const char *filename, struct stat64 *st)
+{
+    static int (*__xstat642)(int x, const char *, struct stat64 *);
+
+    if (!__xstat642) {
+        __xstat642 = dlsym(RTLD_NEXT, "__xstat64");
+    }
+
+    if (can_open(filename)) {
+        return __xstat642(x, filename, st);
     } else {
         return -1;
     }
