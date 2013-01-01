@@ -1,4 +1,0 @@
-#! /bin/sh
-
-# Test a few paths at once:
-LD_PRELOAD=./restrict.so touch file1 file2 file3

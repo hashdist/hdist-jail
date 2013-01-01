@@ -1,6 +1,0 @@
-#! /bin/sh
-
-set -e
-
-gcc -fPIC -Wall -c restrict_open.c -o restrict_open.o
-gcc -shared -o restrict.so restrict_open.o -ldl
