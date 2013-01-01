@@ -27,3 +27,9 @@ All rights reserved.
 
 hdistrestrict is licensed under the BSD 3-clause license. See LICENSE.txt
 for full details.
+
+Dependencies:
+
+ * **khash.h**: Copyright (c) 2008, 2009, 2011
+   by Attractive Chaos <attractor@live.co.uk>.
+   Licensed under the MIT license; see header of ``src/khash.h``.

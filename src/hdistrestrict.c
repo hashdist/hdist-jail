@@ -9,6 +9,8 @@
 #include <string.h>
 #include <limits.h>
 
+#include "khash.h"
+
 //#define DEBUG
 
 // Explicitly allow

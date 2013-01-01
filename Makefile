@@ -1,6 +1,6 @@
 
 
-build/hdistrestrict.so: build src/hdistrestrict.c
+build/hdistrestrict.so: build src/hdistrestrict.c src/khash.h
 	gcc -fPIC -Wall -c src/hdistrestrict.c -o build/hdistrestrict.o
 	gcc -shared -o build/hdistrestrict.so build/hdistrestrict.o -ldl
 
