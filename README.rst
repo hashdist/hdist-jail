@@ -30,10 +30,11 @@ happens.
     then all files accesses are logged/rejected.
     
 
-**HDIST_JAIL_HIDE**:
-    If set to exactly ``1``, then non-whitelisted file accesses will
+**HDIST_JAIL_MODE**:
+    If set, must be either an empty string or ``off``, in which case
+    no action is taken (except optionally logging), or ``hide``,
+    in which case non-whitelisted file accesses will
     return the error ``ENOENT`` ("No such file or directory").
-    Otherwise, access will be like normal (but may be logged).
 
 **HDIST_JAIL_LOG**:
     Non-whitelisted file access will be logged to file. The filename
@@ -41,21 +42,44 @@ happens.
     determined by ``mkstemp`` to make a unique filename for this
     process. See ``man mkstemp`` for permissions of the resulting file.
 
-    Each entry in the log file will contain first the filename terminated
-    by ``\0`` (so that it can include any other character), then a space,
-    then the function name (e.g., ``open``), then optionally further
-    information (currently none), then ``\n``.
-    
+Log file format
+---------------
+
+Each entry in the log file has the form::
+
+    path// action
+
+The `path` is the canonical path name as described below. The canonical
+path can not contain ``//``, so this is used as a terminator, since
+`path` may contain both spaces and newlines.
+
+`action` is the name of the intercepted function (e.g., ``open``, ``fopen``).
+
 
 Behaviour
 ---------
+
+Paths are canonicalized by ``abspath()`` in ``src/abspath.h`` (see
+below).  This differs from ``realpath()`` in that it does *not* follow
+symlinks, so that filters can be applied to path access through
+symlinks.
+
+Since a process may read a symlink explicitly and then access through
+the physical path, if a whitelisted path is accessed through
+``readlink()``, ``realpath()`` or ``canonicalize_file_name()``,
+the returned result is also added to the whitelist.
+
+**Note:** This fails to handle the case where one process resolves the
+physical path, then passes the result to another process. If that is a
+problem one must augment the whitelist accordingly manually.
 
 Currently the jail only targets GNU libc.
 
 The jail generally fails fast and **terminates** the process
 if something is wrong (e.g., HDIST_JAIL_WHITELIST is present
 and non-empty but the file cannot be opened). Termination is
-with exit code EXIT_CODE (by default 30).
+with exit code 30 (can be changed by defining ``EXIT_CODE`` on
+compilation).
 
 The jail always takes action on the exact argument to the call.
 Consider that A is a whitelisted symlink to a non-whitelisted file B.
@@ -66,6 +90,8 @@ access is whitelisted and OK).
 Thread-safety: ``write`` is used to write entire lines at the time to
 the log file, which should mean that output from different threads
 are serialized (see ``man flockfile``).
+
+**Not covered**: ``mkstemp`` etc. are not jailed
 
 Copyright/license
 -----------------
