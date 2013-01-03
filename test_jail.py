@@ -75,10 +75,6 @@ def run_in_jail(tempdir,
                 main_func_code,
                 jail_hide=False,
                 whitelist=None):
-    """
-    Launches the given function in a jailed (Python) subprocess. The function
-    must be pickleable.
-    """
     work_dir = pjoin(tempdir, 'work')
     executable = pjoin(tempdir, 'test')
     compile(executable, dedent(main_func_code))
