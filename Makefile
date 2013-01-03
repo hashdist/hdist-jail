@@ -8,7 +8,7 @@ build:
 	mkdir build
 
 build/test_abspath: src/test_abspath.c src/abspath.h
-	gcc -O0 -g -o build/test_abspath src/test_abspath.c
+	gcc -Wall -O0 -g -o build/test_abspath src/test_abspath.c
 
 test_abspath: build/test_abspath
 	./build/test_abspath

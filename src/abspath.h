@@ -12,7 +12,6 @@ has room for `extra` more bytes
  */
 static char *alloc_getcwd(size_t extra) {
     size_t n = 256;
-    char *r;
     while (1) {
         char *buf = malloc(n + extra);
         if (getcwd(buf, n)) {
@@ -59,10 +58,10 @@ static void normpath(char *p) {
             break;
         } else if (p[0] == '/') {
             char *dst = p, *src = p + 1;
-            while (*dst++ = *src++);
+            while ((*dst++ = *src++));
         } else if (p[0] == '.' && p[1] == '/') {
             char *dst = p, *src = p + 2;
-            while (*dst++ = *src++);
+            while ((*dst++ = *src++));
         } else if (p[0] == '.' && p[1] == 0) {
             p[0] = 0; /* leaves trailing / to be stripped off later */
         } else if (p[0] == '.' && p[1] == '.' && (p[2] == '/' || p[2] == 0)) {
@@ -71,7 +70,7 @@ static void normpath(char *p) {
             while  (*p != '/' && p != start) --p;
             if (*p == '/') ++p;
             char *dst = p;
-            while (*dst++ = *rest++);
+            while ((*dst++ = *rest++));
         } else {
             /* skip ahead to start of next path component */
             while (*p != 0 && *p != '/') p++;
