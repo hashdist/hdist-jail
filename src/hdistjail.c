@@ -8,319 +8,187 @@
 #include <stdarg.h>
 #include <string.h>
 #include <limits.h>
+#include <errno.h>
 
+#include "abspath.h"
 #include "khash.h"
 
-//#define DEBUG
-
-// Explicitly allow
-char *allowed[] = {
-// libc6 includes:
-    "/usr/include/netrose/",
-    "/usr/include/gshadow.h",
-    "/usr/include/regexp.h",
-    "/usr/include/memory.h",
-    "/usr/include/sysexits.h",
-    "/usr/include/grp.h",
-    "/usr/include/printf.h",
-    "/usr/include/ucontext.h",
-    "/usr/include/glob.h",
-    "/usr/include/cpio.h",
-    "/usr/include/link.h",
-    "/usr/include/syscall.h",
-    "/usr/include/ifaddrs.h",
-    "/usr/include/ustat.h",
-    "/usr/include/ttyent.h",
-    "/usr/include/fcntl.h",
-    "/usr/include/wchar.h",
-    "/usr/include/ulimit.h",
-    "/usr/include/error.h",
-    "/usr/include/search.h",
-    "/usr/include/ctype.h",
-    "/usr/include/wait.h",
-    "/usr/include/getopt.h",
-    "/usr/include/regex.h",
-    "/usr/include/netipx",
-    "/usr/include/dlfcn.h",
-    "/usr/include/spawn.h",
-    "/usr/include/endian.h",
-    "/usr/include/x86_64-linux-gnu/",
-    "/usr/include/stropts.h",
-    "/usr/include/ar.h",
-    "/usr/include/protocols/",
-    "/usr/include/unistd.h",
-    "/usr/include/utime.h",
-    "/usr/include/byteswap.h",
-    "/usr/include/a.out.h",
-    "/usr/include/netash",
-    "/usr/include/netash/ash.h",
-    "/usr/include/values.h",
-    "/usr/include/re_comp.h",
-    "/usr/include/crypt.h",
-    "/usr/include/fmtmsg.h",
-    "/usr/include/malloc.h",
-    "/usr/include/nss.h",
-    "/usr/include/shadow.h",
-    "/usr/include/rpcsvc/",
-    "/usr/include/netatalk/",
-    "/usr/include/dirent.h",
-    "/usr/include/execinfo.h",
-    "/usr/include/_G_config.h",
-    "/usr/include/nl_types.h",
-    "/usr/include/tgmath.h",
-    "/usr/include/utmpx.h",
-    "/usr/include/aliases.h",
-    "/usr/include/pthread.h",
-    "/usr/include/neteconet/",
-    "/usr/include/strings.h",
-    "/usr/include/stdio_ext.h",
-    "/usr/include/libintl.h",
-    "/usr/include/sched.h",
-    "/usr/include/utmp.h",
-    "/usr/include/gnu-versions.h",
-    "/usr/include/stab.h",
-    "/usr/include/elf.h",
-    "/usr/include/err.h",
-    "/usr/include/syslog.h",
-    "/usr/include/libio.h",
-    "/usr/include/langinfo.h",
-    "/usr/include/argp.h",
-    "/usr/include/gconv.h",
-    "/usr/include/netrom/",
-    "/usr/include/netdb.h",
-    "/usr/include/setjmp.h",
-    "/usr/include/lastlog.h",
-    "/usr/include/xlocale.h",
-    "/usr/include/arpa/",
-    "/usr/include/nfs",
-    "/usr/include/nfs/nfs.h",
-    "/usr/include/netpacket/",
-    "/usr/include/netax25/",
-    "/usr/include/ftw.h",
-    "/usr/include/wordexp.h",
-    "/usr/include/paths.h",
-    "/usr/include/fstab.h",
-    "/usr/include/mqueue.h",
-    "/usr/include/thread_db.h",
-    "/usr/include/termios.h",
-    "/usr/include/stdio.h",
-    "/usr/include/iconv.h",
-    "/usr/include/ieee754.h",
-    "/usr/include/netinet/",
-    "/usr/include/envz.h",
-    "/usr/include/monetary.h",
-    "/usr/include/mntent.h",
-    "/usr/include/assert.h",
-    "/usr/include/errno.h",
-    "/usr/include/limits.h",
-    "/usr/include/resolv.h",
-    "/usr/include/features.h",
-    "/usr/include/fnmatch.h",
-    "/usr/include/pwd.h",
-    "/usr/include/mcheck.h",
-    "/usr/include/wctype.h",
-    "/usr/include/rpc/",
-    "/usr/include/alloca.h",
-    "/usr/include/complex.h",
-    "/usr/include/stdint.h",
-    "/usr/include/stdlib.h",
-    "/usr/include/string.h",
-    "/usr/include/semaphore.h",
-    "/usr/include/signal.h",
-    "/usr/include/poll.h",
-    "/usr/include/fts.h",
-    "/usr/include/scsi/",
-    "/usr/include/inttypes.h",
-    "/usr/include/sgtty.h",
-    "/usr/include/pty.h",
-    "/usr/include/obstack.h",
-    "/usr/include/aio.h",
-    "/usr/include/locale.h",
-    "/usr/include/time.h",
-    "/usr/include/netiucv/",
-    "/usr/include/net/",
-    "/usr/include/termio.h",
-    "/usr/include/tar.h",
-    "/usr/include/fenv.h",
-    "/usr/include/math.h",
-    "/usr/include/libgen.h",
-    "/usr/include/argz.h",
-
-// linux-libc
-    "/usr/include/drm/",
-    "/usr/include/sound/",
-    "/usr/include/rdma/",
-    "/usr/include/x86_64-linux-gnu/",
-    "/usr/include/video/",
-    "/usr/include/asm-generic/",
-    "/usr/include/mtd/",
-    "/usr/include/linux/",
-    "/usr/include/xen/",
-
-// gcc:
-    "/usr/bin/gcc",
-    "/usr/bin/g++",
-    "/usr/bin/gfortran",
-    "/usr/bin/ld",
-
-// others:
-    "/usr/include/c++/",
-    "/usr/lib/gcc/",
-    "/usr/lib/x86_64-linux-gnu",
-    "/usr/lib/i386-linux-gnu",
-    "/tmp",
-    "/dev/null",
-    "/dev/tty",
-    "/dev/urandom",
-    "/lib/charset.alias",
-    "/usr/bin/install",
-    "/etc/termcap",
-    "/etc/ld.so.conf",
-    "/etc/inputrc",
-    "/proc",
-    "/lib",
-
-    "/bin/sed",
-    "/bin/tar",
-    "/bin/grep",
-    "/bin/dash",
-    "/bin/hostname",
-    "/bin/bash",
-    "/usr/bin/make",
-    "/usr/bin/strip",
-    "/usr/bin/nm",
-
-// coreutils:
-    "/bin/cat",
-    "/bin/chgrp",
-    "/bin/chmod",
-    "/bin/chown",
-    "/bin/cp",
-    "/bin/date",
-    "/bin/dd",
-    "/bin/df",
-    "/bin/dir",
-    "/bin/echo",
-    "/bin/false",
-    "/bin/ln",
-    "/bin/ls",
-    "/bin/mkdir",
-    "/bin/mknod",
-    "/bin/mv",
-    "/bin/pwd",
-    "/bin/readlink",
-    "/bin/rm",
-    "/bin/rmdir",
-    "/bin/vdir",
-    "/bin/sleep",
-    "/bin/stty",
-    "/bin/sync",
-    "/bin/touch",
-    "/bin/true",
-    "/bin/uname",
-    "/bin/mktemp",
-    "/usr/bin/install",
-    "/usr/bin/hostid",
-    "/usr/bin/nice",
-    "/usr/bin/who",
-    "/usr/bin/users",
-    "/usr/bin/pinky",
-    "/usr/bin/stdbuf",
-    "/usr/bin/[",
-    "/usr/bin/base64",
-    "/usr/bin/basename",
-    "/usr/bin/chcon",
-    "/usr/bin/cksum",
-    "/usr/bin/comm",
-    "/usr/bin/csplit",
-    "/usr/bin/cut",
-    "/usr/bin/dircolors",
-    "/usr/bin/dirname",
-    "/usr/bin/du",
-    "/usr/bin/env",
-    "/usr/bin/expand",
-    "/usr/bin/expr",
-    "/usr/bin/factor",
-    "/usr/bin/fmt",
-    "/usr/bin/fold",
-    "/usr/bin/groups",
-    "/usr/bin/head",
-    "/usr/bin/id",
-    "/usr/bin/join",
-    "/usr/bin/link",
-    "/usr/bin/logname",
-    "/usr/bin/md5sum",
-    "/usr/bin/mkfifo",
-    "/usr/bin/nl",
-    "/usr/bin/nproc",
-    "/usr/bin/nohup",
-    "/usr/bin/od",
-    "/usr/bin/paste",
-    "/usr/bin/pathchk",
-    "/usr/bin/pr",
-    "/usr/bin/printenv",
-    "/usr/bin/printf",
-    "/usr/bin/ptx",
-    "/usr/bin/runcon",
-    "/usr/bin/seq",
-    "/usr/bin/sha1sum",
-    "/usr/bin/sha224sum",
-    "/usr/bin/sha256sum",
-    "/usr/bin/sha384sum",
-    "/usr/bin/sha512sum",
-    "/usr/bin/shred",
-    "/usr/bin/shuf",
-    "/usr/bin/sort",
-    "/usr/bin/split",
-    "/usr/bin/stat",
-    "/usr/bin/sum",
-    "/usr/bin/tac",
-    "/usr/bin/tail",
-    "/usr/bin/tee",
-    "/usr/bin/test",
-    "/usr/bin/timeout",
-    "/usr/bin/tr",
-    "/usr/bin/truncate",
-    "/usr/bin/tsort",
-    "/usr/bin/tty",
-    "/usr/bin/unexpand",
-    "/usr/bin/uniq",
-    "/usr/bin/unlink",
-    "/usr/bin/wc",
-    "/usr/bin/whoami",
-    "/usr/bin/yes",
-    "/usr/bin/arch",
-    "/usr/bin/touch",
-    "/usr/bin/md5sum.textutils",
+KHASH_SET_INIT_STR(strset)
 
 
-// TODO: we need to do this automatically somehow:
-    "/home/ondrej/",
-};
-#define Nallowed sizeof(allowed) / sizeof(char*)
+static int strset_contains(khash_t(strset) *h, const char *key) {
+   khint_t i = kh_get(strset, h, key);
+   return kh_exist(h, i);
+}
 
-// Forbid silently
-char *ignore[] = {
-    "/usr/local/",
-    "/usr/x86_64-linux-gnu",
-    "/usr/gnu",
-    "/etc/passwd",
-    "/etc/group",
-};
-#define Nignore sizeof(ignore) / sizeof(char*)
+#ifndef EXIT_CODE
+#define EXIT_CODE 30
+#endif
 
-// Forbid and report
-char *forbidden[] = {
-    "/usr",
-};
-#define Nforbidden sizeof(forbidden) / sizeof(char*)
+#ifndef EXIT_HEADER
+#define EXIT_HEADER "hdistjail.so: "
+#endif
 
-void expand_path(const char *pathname, char fullpath[PATH_MAX])
-{
-    if (!realpath(pathname, fullpath)) {
-        fullpath = "";
+
+/* like malloc() but calls exit() if malloc can't be performed */
+static void *checked_malloc(size_t n) {
+    void *p = malloc(n);
+    if (!p) {
+        fprintf(stderr, "%sOut of memory\n", EXIT_HEADER);
+        exit(EXIT_CODE);
+    }
+    return p;
+}
+
+/* iterates a khash_t(strset) and frees all keys, then destroys the set */
+void destroy_strset(khash_t(strset) *h) {
+    khint_t it;
+    for (it = kh_begin(h); it != kh_end(h); ++it) {
+        if (kh_exist(h, it)) {
+            const char *key = kh_key(h, it);
+            kh_del(strset, h, it);
+            free((void*)key);
+        }
+    }
+    kh_destroy(strset, h);
+}
+
+
+
+static int (*real_open)(const char *, int, mode_t) = NULL;
+static int (*real_open64)(const char *, int, mode_t) = NULL;
+static FILE *(*real_fopen)(const char *, const char *) = NULL;
+static int (*real_execve)(const char *, char *const argv[], char *const envp[]);
+static int (*real_execvp)(const char *, char *const argv[]);
+static int (*real_execv)(const char *, char *const argv[]);
+static int (*real___xstat)(int x, const char *, struct stat *);
+static int (*real___xstat64)(int x, const char *, struct stat64 *);
+static int (*real_access)(const char *pathname, int mode);
+
+
+static void load_real_funcs() {
+    real_open = dlsym(RTLD_NEXT, "open");
+    real_open64 = dlsym(RTLD_NEXT, "open64");
+    real_fopen = dlsym(RTLD_NEXT, "fopen");
+    real_access = dlsym(RTLD_NEXT, "access");
+    real_execve = dlsym(RTLD_NEXT, "execve");
+    real_execvp = dlsym(RTLD_NEXT, "execvp");
+    real_execv = dlsym(RTLD_NEXT, "execv");
+    real___xstat = dlsym(RTLD_NEXT, "__xstat");
+    real___xstat64 = dlsym(RTLD_NEXT, "__xstat64");
+}
+
+/*
+    whitelists
+*/
+static khash_t(strset) *whitelist_exact;
+static khash_t(strset) *whitelist_prefixes;
+
+static void create_whitelist(void) {
+    whitelist_exact = kh_init(strset);
+    whitelist_prefixes = kh_init(strset);
+}
+
+static void destroy_whitelist(void) {
+    destroy_strset(whitelist_exact);
+    destroy_strset(whitelist_prefixes);
+}
+
+static int is_whitelisted(const char *non_absolute_path) {
+    char *p = abspath(non_absolute_path);
+    int success = 0;
+    if (strset_contains(whitelist_exact, p)) {
+        /* exact match */
+        success = 1;
+    } else {
+        /* Try all prefixes; q starts at end of p and then rewinds */
+        char *q = p + strlen(p);
+        while (1) {
+            /* rewind to previous patsep, set it to 0, and look up the prefix */
+            while (q != p && *q != '/') --q;
+            if (q == p) break;
+            *q = 0;
+            if (strset_contains(whitelist_prefixes, p)) {
+                success = 1;
+                break;
+            }
+        }
+    }
+    free(p);
+    return success;
+}
+
+static void load_whitelist(char *filename) {
+    FILE *fd = real_fopen(filename, "r");
+    if (fd == NULL) {
+        fprintf(stderr, "%sError reading %s: %s\n",
+                EXIT_HEADER, filename, strerror(errno));
+        exit(EXIT_CODE);
+    }
+    while (1) {
+        char *line = NULL;
+        size_t n, r;
+        int kh_ret;
+        if ((r = getline(&line, &n, fd)) == -1) {
+            break;
+        }
+        if (line[0] != '/') {
+            fprintf(stderr, "%sAll entries in %s must be absolute paths\n",
+                    EXIT_HEADER, filename);
+            exit(EXIT_CODE);
+        }        /* strip trailing newline if any */
+        if (line[r - 1] == '\n') {
+            line[r - 1] = 0;
+            r--;
+        }
+        /* strip blank lines */
+        if (strcmp(line, "") == 0) {
+            continue;
+        }
+        /* check for "/<star><star>" suffix */
+        if (r >= 3 && strcmp(&line[r - 3], "/**") == 0) {
+            line[r - 3] = 0; /* truncate  */
+            kh_put(strset, whitelist_prefixes, line, &kh_ret);
+            if (kh_ret == 0) {
+                printf("already present #1\n");
+                free(line);
+            }
+        } else {
+            kh_put(strset, whitelist_exact, line, &kh_ret);
+            if (kh_ret == 0) {
+                printf("already present #2\n");
+                free(line);
+            }
+        }
     }
 }
+
+
+/*
+    initialization/finalization code
+*/
+
+__attribute__((constructor)) static void _init(void) {
+    load_real_funcs();
+    create_whitelist();
+    {
+        char *whitelist = getenv("HDIST_JAIL_WHITELIST");
+        if (whitelist != NULL && strcmp(whitelist, "") != 0) {
+            load_whitelist(whitelist);
+        }
+    }
+}
+
+__attribute__((destructor)) static void _finalize(void) {
+    destroy_whitelist();
+}
+
+
+
+
+
+
+
 
 
 /*
@@ -330,96 +198,44 @@ Returns 1 if it can, 0 if it cannot.
 */
 int can_open(const char *pathname)
 {
-    static int logfd=-1;
-    static int (*_open)(const char *, int, mode_t) = NULL;
-    int i;
-    char fullpath[PATH_MAX];
-    if (logfd == -1) {
-        _open = dlsym(RTLD_NEXT, "open");
-        logfd = _open("/tmp/access.log", O_WRONLY|O_APPEND|O_CREAT, 0666);
-    }
-    expand_path(pathname, fullpath);
-#ifdef DEBUG
-    if (logfd != -1) {
-        dprintf(logfd, "Checking file: %s\n", fullpath);
-    }
-#endif
-    for (i=0; i < Nallowed; i++) {
-        if (strncmp(fullpath, allowed[i], strlen(allowed[i])) == 0)
-            return 1;
-        // Also accessing any subpaths is ok:
-        if (strncmp(allowed[i], fullpath, strlen(fullpath)) == 0)
-            return 1;
-    }
-    for (i=0; i < Nignore; i++) {
-        if (strncmp(fullpath, ignore[i], strlen(ignore[i])) == 0)
-            return 0;
-    }
-    for (i=0; i < Nforbidden; i++) {
-        if (strncmp(fullpath, forbidden[i], strlen(forbidden[i])) == 0) {
-            if (logfd != -1) {
-                dprintf(logfd, "RESTRICT: %s (due to '%s')\n", fullpath,
-                        forbidden[i]);
-            }
-            return 0;
-        }
-    }
-    if (logfd != -1) {
-        dprintf(logfd, "RESTRICT: untracked file: %s\n", fullpath);
-    }
-    return 0;
+    return is_whitelisted(pathname);
 }
 
 int open(const char *pathname, int flags, ...)
 {
-    static int (*_open)(const char *, int, mode_t) = NULL;
     mode_t mode;
     va_list vl;
     va_start(vl, flags);
     mode = va_arg(vl, mode_t);
     va_end(vl);
-
-    if (!_open) {
-        _open = dlsym(RTLD_NEXT, "open");
-    }
-    if (can_open(pathname)) {
-        return _open(pathname, flags, mode);
-    } else {
+    if (!can_open(pathname)) {
+        errno = ENOENT;
         return -1;
     }
+    return real_open(pathname, flags, mode);
 }
 
 int open64(const char *pathname, int flags, ...)
 {
-    static int (*_open64)(const char *, int, mode_t) = NULL;
     mode_t mode;
     va_list vl;
     va_start(vl, flags);
     mode = va_arg(vl, mode_t);
     va_end(vl);
-
-    if (!_open64) {
-        _open64 = dlsym(RTLD_NEXT, "open64");
-    }
-    if (can_open(pathname)) {
-        return _open64(pathname, flags, mode);
-    } else {
+    if (!can_open(pathname)) {
+        errno = ENOENT;
         return -1;
     }
+    return real_open64(pathname, flags, mode);
 }
 
 FILE *fopen(const char *pathname, const char *mode)
 {
-    static FILE *(*_fopen)(const char *, const char *) = NULL;
-
-    if (!_fopen) {
-        _fopen = dlsym(RTLD_NEXT, "fopen");
-    }
-    if (can_open(pathname)) {
-        return _fopen(pathname, mode);
-    } else {
+    if (!can_open(pathname)) {
+        errno = ENOENT;
         return NULL;
     }
+    return real_fopen(pathname, mode);
 }
 
 int execve(const char *filename, char *const argv[], char *const envp[])
