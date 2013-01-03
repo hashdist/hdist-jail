@@ -17,8 +17,8 @@ KHASH_SET_INIT_STR(strset)
 
 
 static int strset_contains(khash_t(strset) *h, const char *key) {
-   khint_t i = kh_get(strset, h, key);
-   return kh_exist(h, i);
+    khint_t i = kh_get(strset, h, key);
+    return (i != kh_end(h) && kh_exist(h, i));
 }
 
 #ifndef EXIT_CODE
