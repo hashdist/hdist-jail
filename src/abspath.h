@@ -42,60 +42,44 @@ static char *alloc_getcwd(size_t extra) {
  */
 static void normpath(char *p) {
     /* note: cannot use strcat, strcpy as buffers overlap */
-    char *start = p;
-    int is_abs = p[0] == '/';
 
-    /* special cases for when p is relative and starts with '..' */
-    while (p[0] == '.' && p[1] == '.') {
-        if (p[2] == 0) {
-            p[0] = 0;
-            return;
-        } else if (p[2] == '/') {
-            char *dst = p, *src = p + 3;
-            while (*dst++ = *src++);
-        } else {
-            break;
-        }
-    }
+    /* we keep initial / out of it for absolute paths, then the rest is the same */
+    char *start;
+    if (p[0] == '/') p++;
+    start = p;
 
     while (1) {
-        while (*p != 0 && *p != '/') ++p;
-        if (*p == 0) break;
+        /* Strategy: Modify p in place (copying up from the rest of the string)
+           when applying rules. Only if no rules were applied do we search for
+           a new path component (i.e., loop is used as rail recursion).
 
-        /* invariant: p[0] == '/' */
-        if (p[1] == '/') {
-            /* // -> / */
-            char *dst = p + 1, *src = p + 2;
+           Invariant: p[0] is at beginning of next path component (which may
+           be empty). */
+        if (p[0] == 0) {
+            break;
+        } else if (p[0] == '/') {
+            char *dst = p, *src = p + 1;
             while (*dst++ = *src++);
-        } else if (p[1] == '.' && p[2] == '/') {
-            /* "/./" to "/." to "/" */
-            char *dst = p + 1, *src = p + 3;
+        } else if (p[0] == '.' && p[1] == '/') {
+            char *dst = p, *src = p + 2;
             while (*dst++ = *src++);
-        } else if (p[1] == '.' && p[2] == 0) {
-            /* trailing "/." */
-            p[0] = 0;
-        } else if (p[1] == '.' && p[2] == '.' && (p[3] == '/' || p[3] == 0)) {
-            /* backtrace to handle '..' */
-            char *rest = p + 3;
-            if (p != start) --p;
+        } else if (p[0] == '.' && p[1] == 0) {
+            p[0] = 0; /* leaves trailing / to be stripped off later */
+        } else if (p[0] == '.' && p[1] == '.' && (p[2] == '/' || p[2] == 0)) {
+            char *rest = p + 2;
+            if (p != start) p -= 2;
             while  (*p != '/' && p != start) --p;
-            if (p == start && start[0] == '/' && rest[0] == 0) {
-                /* `rest` does not start with '/' but we need to preserve  */
-                start[1] = 0;
-                return;
-            } else {
-                char *dst = p;
-                while (*dst++ = *rest++);
-            }
+            if (*p == '/') ++p;
+            char *dst = p;
+            while (*dst++ = *rest++);
         } else {
-            /* no folding has taken place, so we skip to next component;
-               (otherwise repeat in current position and see if we can fold more) */
-            p++;
+            /* skip ahead to start of next path component */
+            while (*p != 0 && *p != '/') p++;
+            if (*p == '/') p++;
         }
     }
-
-    /* remove trailing /, unless it is the starting / */
-    if (p != start && !is_abs && p[-1] == '/') p[-1] = 0;
+    /* remove trailing / */
+    if (p != start && p[-1] == '/') p[-1] = 0;
 }
 
 

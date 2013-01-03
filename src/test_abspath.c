@@ -22,6 +22,13 @@ int main(int argc, char *argv[]) {
     test("foo/bar/../");
     test("foo/bar/../..");
     test("foo/bar/../../");
+
+    test("/foo/.");
+    test("/foo/bar/..");
+    test("/foo/bar/../");
+    test("/foo/bar/../..");
+    test("/foo/bar/../../");
+
     test("..");
     test("../../../../../../..");
     test("../../../../../../../");
@@ -33,5 +40,8 @@ int main(int argc, char *argv[]) {
     test("/.");
     test("/.///././././etc");
     test("/.///././.././etc");
+    test("//");
+    test("/./");
+    test("///./");
     return 0;
 }
