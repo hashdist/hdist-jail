@@ -31,14 +31,14 @@ static int strset_contains(khash_t(strset) *h, const char *key) {
 
 
 /* like malloc() but calls exit() if malloc can't be performed */
-static void *checked_malloc(size_t n) {
+/*static void *checked_malloc(size_t n) {
     void *p = malloc(n);
     if (!p) {
         fprintf(stderr, "%sOut of memory\n", EXIT_HEADER);
         exit(EXIT_CODE);
     }
     return p;
-}
+    }*/
 
 /* iterates a khash_t(strset) and frees all keys, then destroys the set */
 void destroy_strset(khash_t(strset) *h) {
@@ -102,15 +102,18 @@ static int is_whitelisted(const char *non_absolute_path) {
         success = 1;
     } else {
         /* Try all prefixes; q starts at end of p and then rewinds */
-        char *q = p + strlen(p);
-        while (1) {
-            /* rewind to previous patsep, set it to 0, and look up the prefix */
-            while (q != p && *q != '/') --q;
-            if (q == p) break;
-            *q = 0;
-            if (strset_contains(whitelist_prefixes, p)) {
-                success = 1;
-                break;
+        size_t n = strlen(p);
+        char *q = p + n;
+        if (n > 0) {
+            while (1) {
+                /* rewind to previous patsep, set it to 0, and look up the prefix */
+                while (q != p && *q != '/') --q;
+                if (q == p) break;
+                *q = 0;
+                if (strset_contains(whitelist_prefixes, p)) {
+                    success = 1;
+                    break;
+                }
             }
         }
     }
