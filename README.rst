@@ -42,6 +42,10 @@ happens.
     determined by ``mkstemp`` to make a unique filename for this
     process. See ``man mkstemp`` for permissions of the resulting file.
 
+**HDIST_JAIL_STDERR**:
+    If set to a non-empty string, logging will happen to stderr. Each
+    log line will be prefixed with the string given.
+
 Log file format
 ---------------
 
@@ -53,7 +57,8 @@ The `path` is the canonical path name as described below. The canonical
 path can not contain ``//``, so this is used as a terminator, since
 `path` may contain both spaces and newlines.
 
-`action` is the name of the intercepted function (e.g., ``open``, ``fopen``).
+`action` is usually the name of the intercepted function
+(e.g., ``open``, ``fopen``), but see below.
 
 
 Behaviour
@@ -66,7 +71,11 @@ symlinks.
 
 Since a process may read a symlink explicitly and then access through
 the physical path, if a whitelisted path is accessed through
-``readlink()``, ``realpath()`` or ``canonicalize_file_name()``,
+``readlink()``, ``realpath()`` or ``canonicalize_file_name()``
+then the process may attempt. This situation is warned against
+using ``readlink-of-blacklisted`` (former) or
+``realpath-of-blacklisted`` (latter two) `action`.
+
 the returned result is also added to the whitelist.
 
 **Note:** This fails to handle the case where one process resolves the

@@ -77,6 +77,7 @@ def run_in_jail(tempdir,
                 main_func_code,
                 jail_mode=None,
                 whitelist=None,
+                stderr=False,
                 should_log=True):
     work_dir = pjoin(tempdir, 'work')
     executable = pjoin(tempdir, 'test')
@@ -87,6 +88,8 @@ def run_in_jail(tempdir,
         env['HDIST_JAIL_MODE'] = jail_mode
     if should_log:
         env['HDIST_JAIL_LOG'] = pjoin(tempdir, 'log', 'log')
+    if stderr:
+        env['HDIST_JAIL_STDERR'] = 'hdistjail: '
 
     if whitelist is not None:
         # make whitelist contain absolute paths

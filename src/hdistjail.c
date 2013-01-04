@@ -80,8 +80,11 @@ static void load_real_funcs() {
 /*
     logging
 */
-static FILE *logfile = NULL;
-static void open_log(void) {
+static FILE *g_logfile = NULL;
+#define STDERR_PREFIX_SIZE 100
+static char g_stderr_prefix[STDERR_PREFIX_SIZE];
+
+static void open_log_file(void) {
     char *filename;
     size_t prefix_len;
     int fd;
@@ -97,23 +100,38 @@ static void open_log(void) {
     fd = mkstemp(filename);
     free(filename);
     if (fd == -1) goto ERROR;
-    logfile = fdopen(fd, "w");
-    if (logfile == NULL) goto ERROR;
+    g_logfile = fdopen(fd, "w");
+    if (g_logfile == NULL) goto ERROR;
     return;
  ERROR:
     fprintf(stderr, "Could not create log file: %s", strerror(errno));
     exit(EXIT_CODE);
 }
 
+static void open_log(void) {
+    open_log_file();
+    {
+        const char *stderr_prefix = getenv("HDIST_JAIL_STDERR");
+        g_stderr_prefix[0] = 0;
+        if (stderr_prefix) {
+            strncpy(g_stderr_prefix, stderr_prefix, STDERR_PREFIX_SIZE - 1);
+            g_stderr_prefix[STDERR_PREFIX_SIZE - 1] = 0;
+        }
+    }
+}
+
 static void close_log(void) {
-    if (logfile) {
-        fclose(logfile);
+    if (g_logfile) {
+        fclose(g_logfile);
     }
 }
 
 static void log_access(const char *path, const char *funcname) {
-    if (logfile) {
-        fprintf(logfile, "%s// %s\n", path, funcname);
+    if (g_logfile) {
+        fprintf(g_logfile, "%s// %s\n", path, funcname);
+    }
+    if (g_stderr_prefix[0]) {
+        fprintf(stderr, "%s%s(\"%s\", ...)\n", g_stderr_prefix, funcname, path);
     }
 }
 
@@ -264,7 +282,7 @@ __attribute__((destructor)) static void _finalize(void) {
     close_log();
 }
 
-int can_open(void *x) {return 1;}
+int can_open(const char *x) {return 1;}
 
 int open(const char *pathname, int flags, ...)
 {
