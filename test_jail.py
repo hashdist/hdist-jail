@@ -14,6 +14,7 @@ import errno
 import functools
 import nose
 from nose.tools import ok_, eq_
+from glob import glob
 
 JAIL_SO = os.path.realpath(pjoin(os.path.dirname(__file__), 'build', 'hdistjail.so'))
 
@@ -35,9 +36,10 @@ def fixture():
     def decorator(func):
         @functools.wraps(func)
         def decorated():
-            tempdir = tempfile.mkdtemp(prefix='jailtest')
+            tempdir = tempfile.mkdtemp(prefix='jailtest-')
             try:
                 os.mkdir(pjoin(tempdir, 'work'))
+                os.mkdir(pjoin(tempdir, 'log'))
                 return func(tempdir)
             finally:
                 shutil.rmtree(tempdir)
@@ -73,15 +75,18 @@ def compile(path, main_func_code):
 
 def run_in_jail(tempdir,
                 main_func_code,
-                jail_hide=False,
-                whitelist=None):
+                jail_mode=None,
+                whitelist=None,
+                should_log=True):
     work_dir = pjoin(tempdir, 'work')
     executable = pjoin(tempdir, 'test')
     compile(executable, dedent(main_func_code))
     cmd = [executable]
     env = dict(LD_PRELOAD=JAIL_SO)
-    if jail_hide:
-        env['HDIST_JAIL_HIDE'] = '1'
+    if jail_mode:
+        env['HDIST_JAIL_MODE'] = jail_mode
+    if should_log:
+        env['HDIST_JAIL_LOG'] = pjoin(tempdir, 'log', 'log')
 
     if whitelist is not None:
         # make whitelist contain absolute paths
@@ -104,17 +109,31 @@ def run_in_jail(tempdir,
         os.chmod(run_sh, 0777)
 
     # ...but run the test in a slightly more controlled environment
-    out = subprocess.check_output(cmd, cwd=work_dir, env=env)
+    proc = subprocess.Popen(cmd, cwd=work_dir, env=env,
+                            stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE)
+    out, err = proc.communicate()
+    ret = proc.wait()
+    if ret != 0:
+        raise subprocess.CalledProcessError(cmd, ret)
     lines = [x for x in out.splitlines() if x]
-    return lines
+    logfiles = glob(pjoin(tempdir, 'log', 'log-%d-*' % proc.pid))
+    if should_log:
+        assert len(logfiles) == 1
+        with file(logfiles[0]) as f:
+            log = [x[:-1] for x in f.readlines()]
+    else:
+        assert len(logfiles) == 0
+        log = None
+    return log, lines
 
 def run_int_checks(tempdir, preamble, checks, **kw):
     """like run_in_jail, but takes a list of integer-producing statements
     and converts the output to ints"""
     code = preamble + '\n'
     code += '\n'.join(r'printf("%%d\n", (%s));' % check for check in checks)
-    out = run_in_jail(tempdir, code, **kw)
-    return [int(x) for x in out]
+    log, lines = run_in_jail(tempdir, code, **kw)
+    return log, [int(x) for x in lines]
 
 #
 # Tests
@@ -122,24 +141,36 @@ def run_int_checks(tempdir, preamble, checks, **kw):
 
 @fixture()
 def test_test_machinery(tempdir):
-    out = run_in_jail(tempdir, r'''
+    log, out = run_in_jail(tempdir, r'''
        printf("Hello %s\n", getenv("LD_PRELOAD"));
        ''')
     eq_(['Hello %s' % JAIL_SO], out)
 
 @fixture()
-def test_whitelist_open(tempdir):
-    mock_files(tempdir, ['okfile', 'hiddenfile'])
-    out = run_int_checks(tempdir,
+def test_whitelist_behaviour(tempdir):
+    mock_files(tempdir, ['okfile', 'hiddenfile', 'subdir/foo', 'subdir/bar'])
+    checks = ['open("okfile", O_RDONLY) != -1',
+              'open("hiddenfile", O_RDONLY) != -1',
+              'errno',
+              'open("subdir/foo", O_RDONLY) != -1'
+              ]
+    # jail_mode='hide'
+    log, out = run_int_checks(tempdir, '', checks, jail_mode='hide',
+                              whitelist=['okfile', 'subdir/**'])
+    eq_([1, 0, errno.ENOENT, 1], out)
+    eq_(['%s/work/hiddenfile// open' % tempdir], log)
+    # jail_mode='off'
+    log, out = run_int_checks(tempdir, '', checks, jail_mode='off',
+                              whitelist=['okfile', 'subdir/**'])
+    eq_([1, 1, 0, 1], out)
+    eq_(['%s/work/hiddenfile// open' % tempdir], log)
+
+@fixture()
+def test_log_no_whitelist(tempdir):
+    log, out = run_int_checks(
+        tempdir,
         '',
-        ['open("okfile", O_RDONLY) != -1',
-         'errno',
-         'open("hiddenfile", O_RDONLY) != -1',
-         'errno'
-         ],
-        jail_hide=True,
-        whitelist=['okfile'])
-    eq_([1, 0, 0, errno.ENOENT], out)
+        ['open("logged", O_RDONLY) != -1'])
 
 if __name__ == '__main__':
     nose.main(sys.argv)
