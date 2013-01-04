@@ -100,7 +100,15 @@ Thread-safety: ``write`` is used to write entire lines at the time to
 the log file, which should mean that output from different threads
 are serialized (see ``man flockfile``).
 
-**Not covered**: ``mkstemp`` etc. are not jailed
+Bugs
+----
+
+ * The ``execvp*`` functions (when argument does not contain a slash):
+   These look through PATH for the binary to execute; hdistjail does not
+   replicate this behaviour but always lets such calls through as if
+   they were whitelisted.
+
+ * ``mkstemp`` and friends are not jailed
 
 Copyright/license
 -----------------
@@ -109,7 +117,7 @@ Copyright (c) 2012, Dag Sverre Seljebotn and Ondrej Certik.
 
 All rights reserved.
 
-hdistrestrict is licensed under the BSD 3-clause license. See LICENSE.txt
+hdistjail is licensed under the BSD 3-clause license. See LICENSE.txt
 for full details.
 
 Dependencies:

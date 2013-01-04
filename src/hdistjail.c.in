@@ -13,6 +13,55 @@
 #include "abspath.h"
 #include "khash.h"
 
+/*
+   Compile-time parameters
+*/
+
+#ifndef EXIT_CODE
+#define EXIT_CODE 30
+#endif
+
+#ifndef EXIT_HEADER
+#define EXIT_HEADER "hdistjail.so: "
+#endif
+
+
+/*
+   Hook function declarations. Since this is a lot of repetetive code we rely on templating.
+
+   Throughout, "p" is used as the path name to filter.
+*/
+
+/* rtype, funcname, decl_args, call_args */
+{% set simple_funcs = [
+    ('FILE *', 'fopen', 'const char *p, const char *mode', 'p, mode'),
+    ('int', 'execve', 'const char *p, char *const argv[], char *const envp[]', 'p, argv, envp'),
+    ('int', 'execv', 'const char *p, char *const argv[]', 'p, argv'),
+    ('int', 'access', 'const char *p, int mode', 'p, mode'),
+    ('int', '__xstat', 'int x, const char *p, struct stat *buf', 'x, p, buf'),
+    ('int', '__xstat64', 'int x, const char *p, struct stat *buf', 'x, p, buf'),
+]%}
+
+{% set execvp_funcs = [
+    ('int', 'execvpe', 'const char *p, char *const argv[], char *const envp[]', 'p, argv, envp'),
+    ('int', 'execvp', 'const char *p, char *const argv[]', 'p, argv')
+]%}
+
+{% set open_funcs = [
+    ('int', 'open', 'const char *p, int oflag, mode_t mode', 'p, oflag, mode'),
+    ('int', 'open64', 'const char *p, int oflag, mode_t mode', 'p, oflag, mode')
+]%}
+
+{% set all_funcs = simple_funcs + execvp_funcs + open_funcs %}
+
+{% for rtype, func, declargs, callargs in all_funcs %}
+static {{rtype}} (*real_{{func}})({{declargs}}) = NULL;
+{% endfor %}
+
+
+/*
+    string set
+*/
 KHASH_SET_INIT_STR(strset)
 
 static int strset_contains(khash_t(strset) *h, const char *key) {
@@ -33,14 +82,6 @@ void strset_destroy(khash_t(strset) *h) {
     kh_destroy(strset, h);
 }
 
-#ifndef EXIT_CODE
-#define EXIT_CODE 30
-#endif
-
-#ifndef EXIT_HEADER
-#define EXIT_HEADER "hdistjail.so: "
-#endif
-
 
 /* like malloc() but calls exit() if malloc can't be performed */
 static void *checked_malloc(size_t n) {
@@ -53,29 +94,6 @@ static void *checked_malloc(size_t n) {
 }
 
 
-
-static int (*real_open)(const char *, int, mode_t) = NULL;
-static int (*real_open64)(const char *, int, mode_t) = NULL;
-static FILE *(*real_fopen)(const char *, const char *) = NULL;
-static int (*real_execve)(const char *, char *const argv[], char *const envp[]);
-static int (*real_execvp)(const char *, char *const argv[]);
-static int (*real_execv)(const char *, char *const argv[]);
-static int (*real___xstat)(int x, const char *, struct stat *);
-static int (*real___xstat64)(int x, const char *, struct stat64 *);
-static int (*real_access)(const char *pathname, int mode);
-
-
-static void load_real_funcs() {
-    real_open = dlsym(RTLD_NEXT, "open");
-    real_open64 = dlsym(RTLD_NEXT, "open64");
-    real_fopen = dlsym(RTLD_NEXT, "fopen");
-    real_access = dlsym(RTLD_NEXT, "access");
-    real_execve = dlsym(RTLD_NEXT, "execve");
-    real_execvp = dlsym(RTLD_NEXT, "execvp");
-    real_execv = dlsym(RTLD_NEXT, "execv");
-    real___xstat = dlsym(RTLD_NEXT, "__xstat");
-    real___xstat64 = dlsym(RTLD_NEXT, "__xstat64");
-}
 
 /*
     logging
@@ -247,9 +265,12 @@ static int jail_access(const char *arg_path, const char *funcname) {
 
 
 
+
 /*
     initialization/finalization code
 */
+
+static void load_real_funcs();
 
 __attribute__((constructor)) static void _init(void) {
     load_real_funcs();
@@ -282,125 +303,49 @@ __attribute__((destructor)) static void _finalize(void) {
     close_log();
 }
 
-int can_open(const char *x) {return 1;}
 
-int open(const char *pathname, int flags, ...)
-{
-    mode_t mode;
-    va_list vl;
-    va_start(vl, flags);
-    mode = va_arg(vl, mode_t);
-    va_end(vl);
-    if (!jail_access(pathname, "open")) return -1;
-    else return real_open(pathname, flags, mode);
+/*
+    Hook implementation
+*/
+
+
+static void load_real_funcs() {
+    {% for rtype, func, declargs, callargs in all_funcs %}
+    real_{{func}} = dlsym(RTLD_NEXT, "{{func}}");
+    {% endfor %}
 }
 
-int open64(const char *pathname, int flags, ...)
-{
-    mode_t mode;
-    va_list vl;
-    va_start(vl, flags);
-    mode = va_arg(vl, mode_t);
-    va_end(vl);
-    if (!jail_access(pathname, "open64")) return -1;
-    else return real_open64(pathname, flags, mode);
+
+/* Simple functions that just forwards arguments */
+{% for rtype, func, declargs, callargs in simple_funcs %}
+{% set err_ret = '-1' if rtype == 'int' else 'NULL' %}
+{{rtype}} {{func}}({{declargs}}) {
+    if (!jail_access(p, "{{func}}")) return {{err_ret}};
+    else return real_{{func}}({{callargs}});
 }
+{% endfor %}
 
-FILE *fopen(const char *pathname, const char *mode)
-{
-    if (!can_open(pathname)) {
-        errno = ENOENT;
-        return NULL;
-    }
-    return real_fopen(pathname, mode);
-}
-
-int execve(const char *filename, char *const argv[], char *const envp[])
-{
-    static int (*_execve)(const char *, char *const argv[], char *const envp[]);
-
-    if (!_execve) {
-        _execve = dlsym(RTLD_NEXT, "execve");
-    }
-    if (can_open(filename)) {
-        return _execve(filename, argv, envp);
+/* For open()/open64() we need to treat varargs */
+{% for _, func, declargs, callargs in open_funcs %}
+int {{func}}(const char *p, int oflag, ...) {
+    if (oflag & O_CREAT) {
+        va_list vl;
+        mode_t mode;
+        va_start(vl, oflag);
+        mode = va_arg(vl, mode_t);
+        va_end(vl);
+        if (!jail_access(p, "{{func}}")) return -1;
+        else return real_{{func}}(p, oflag, mode);
     } else {
-        return -1;
+        int (*two_arg_open)(const char *p, int oflag);
+        two_arg_open = (void*)real_{{func}};
+        if (!jail_access(p, "{{func}}")) return -1;
+        else return two_arg_open(p, oflag);
     }
 }
+{% endfor %}
 
-int execvp(const char *filename, char *const argv[])
-{
-    static int (*_execvp)(const char *, char *const argv[]);
+/* For execvp*(), we need to check if p contains /. If not,
+   we currently always pass it through (which is a bug, see README). */
 
-    if (!_execvp) {
-        _execvp = dlsym(RTLD_NEXT, "execvp");
-    }
-    if (can_open(filename)) {
-        return _execvp(filename, argv);
-    } else {
-        return -1;
-    }
-}
 
-int execv(const char *filename, char *const argv[])
-{
-    static int (*_execv)(const char *, char *const argv[]);
-
-    if (!_execv) {
-        _execv = dlsym(RTLD_NEXT, "execv");
-    }
-    if (can_open(filename)) {
-        return _execv(filename, argv);
-    } else {
-        return -1;
-    }
-}
-
-// These are stat() and stat64() functions, that internally in GNU libc() are
-// implemented as __xstat and __xstat64. See:
-// http://stackoverflow.com/questions/5478780/c-and-ld-preload-open-and-open64-calls-intercepted-but-not-stat64
-
-int __xstat(int x, const char *filename, struct stat *st)
-{
-    static int (*__xstat2)(int x, const char *, struct stat *);
-
-    if (!__xstat2) {
-        __xstat2 = dlsym(RTLD_NEXT, "__xstat");
-    }
-    if (can_open(filename)) {
-        return __xstat2(x, filename, st);
-    } else {
-        return -1;
-    }
-}
-
-int __xstat64(int x, const char *filename, struct stat64 *st)
-{
-    static int (*__xstat642)(int x, const char *, struct stat64 *);
-
-    if (!__xstat642) {
-        __xstat642 = dlsym(RTLD_NEXT, "__xstat64");
-    }
-
-    if (can_open(filename)) {
-        return __xstat642(x, filename, st);
-    } else {
-        return -1;
-    }
-}
-
-int access(const char *pathname, int mode)
-{
-    static int (*_access)(const char *pathname, int mode);
-
-    if (!_access) {
-        _access = dlsym(RTLD_NEXT, "access");
-    }
-
-    if (can_open(pathname)) {
-        return _access(pathname, mode);
-    } else {
-        return -1;
-    }
-}

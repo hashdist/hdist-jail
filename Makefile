@@ -1,7 +1,10 @@
 
 
-build/hdistjail.so: build src/hdistjail.c src/khash.h src/abspath.h
-	gcc -fPIC -Wall -c src/hdistjail.c -o build/hdistjail.o
+build/hdistjail.c: src/hdistjail.c.in
+	./runjinja.py src/hdistjail.c.in build/hdistjail.c
+
+build/hdistjail.so: build build/hdistjail.c src/khash.h src/abspath.h
+	gcc -Isrc -fPIC -Wall -c build/hdistjail.c -o build/hdistjail.o
 	gcc -shared -o build/hdistjail.so build/hdistjail.o -ldl
 
 build:
