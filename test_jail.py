@@ -62,7 +62,9 @@ def compile(path, main_func_code):
         f.write(dedent('''
         #include <stdio.h>
         #include <stdlib.h>
+        #include <sys/types.h>
         #include <sys/stat.h>
+        #include <unistd.h>
         #include <fcntl.h>
         #include <errno.h>
 
@@ -138,6 +140,17 @@ def run_int_checks(tempdir, preamble, checks, **kw):
     log, lines = run_in_jail(tempdir, code, **kw)
     return log, [int(x) for x in lines]
 
+def run_assertions(tempdir, preamble, checks, **kw):
+    check_stats = [tup[0] for tup in checks]
+    check_log = [tup[1] for tup in checks]
+    log, lines = run_int_checks(tempdir, preamble, check_stats, **kw)
+    for got_log, got_line, (expr, want_log) in zip(log, lines, checks):
+        if got_line != 1:
+            raise AssertionError('assertion failed: %s' % expr)
+        assert got_log.startswith(tempdir + '/work/')
+        got_log = got_log[len(tempdir + '/work/'):]
+        eq_(want_log, got_log)
+
 #
 # Tests
 #
@@ -174,6 +187,34 @@ def test_log_no_whitelist(tempdir):
         tempdir,
         '',
         ['open("logged", O_RDONLY) != -1'])
+
+@fixture()
+def test_simple_funcs(tempdir):
+    # simply checks that functions still work and that the access is logged;
+    # the whitelisting is checked
+    # above (for the open call only, but that exersizes teh call)
+    mock_files(tempdir, ["okfile"])
+    run_assertions(tempdir, 'struct stat s;',
+                   [('fopen("okfile", "r") != NULL', 'okfile// fopen'),
+                    ('fopen("notpresent", "r") == NULL', 'notpresent// fopen'),
+                    ('fopen("created", "w") != NULL', 'created// fopen'),
+                    ('access("okfile", R_OK) == 0', 'okfile// access'),
+                    ('access("notpresent", R_OK) == -1', 'notpresent// access'),
+                    ('stat("okfile", &s) == 0', 'okfile// stat')])
+
+@fixture()
+def test_open(tempdir):
+    mock_files(tempdir, ["okfile"])
+    1/0 # make sure to test both with vararg and without...
+    run_assertions(tempdir, '',
+                   [('open("okfile", "r") != NULL', 'okfile// fopen'),
+                    ('fopen("notpresent", "r") == NULL', 'notpresent// fopen'),
+                    ('fopen("created", "w") != NULL', 'created// fopen'),
+                    ('access("okfile", R_OK) == 0', 'okfile// access'),
+                    ('access("notpresent", R_OK) == -1', 'notpresent// access'),
+                    ('stat("okfile", &s) == 0', 'okfile// stat')])
+    
+   
 
 if __name__ == '__main__':
     nose.main(sys.argv)

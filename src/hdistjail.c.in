@@ -58,6 +58,7 @@
 static {{rtype}} (*real_{{func}})({{declargs}}) = NULL;
 {% endfor %}
 
+{% set func_name_map = {"__xstat": "stat", "__xstat64": "stat"} %}
 
 /*
     string set
@@ -320,7 +321,7 @@ static void load_real_funcs() {
 {% for rtype, func, declargs, callargs in simple_funcs %}
 {% set err_ret = '-1' if rtype == 'int' else 'NULL' %}
 {{rtype}} {{func}}({{declargs}}) {
-    if (!jail_access(p, "{{func}}")) return {{err_ret}};
+    if (!jail_access(p, "{{func_name_map.get(func, func)}}")) return {{err_ret}};
     else return real_{{func}}({{callargs}});
 }
 {% endfor %}
@@ -334,12 +335,12 @@ int {{func}}(const char *p, int oflag, ...) {
         va_start(vl, oflag);
         mode = va_arg(vl, mode_t);
         va_end(vl);
-        if (!jail_access(p, "{{func}}")) return -1;
+        if (!jail_access(p, "{{func_name_map.get(func, func)}}")) return -1;
         else return real_{{func}}(p, oflag, mode);
     } else {
         int (*two_arg_open)(const char *p, int oflag);
         two_arg_open = (void*)real_{{func}};
-        if (!jail_access(p, "{{func}}")) return -1;
+        if (!jail_access(p, "{{func_name_map.get(func, func)}}")) return -1;
         else return two_arg_open(p, oflag);
     }
 }
