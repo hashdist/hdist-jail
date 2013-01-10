@@ -27,8 +27,7 @@ happens.
     and no other forms of globbing is supported).
 
     If this environment variable is not present or an empty string
-    then all files accesses are logged/rejected.
-    
+    then all files accesses are logged/rejected.    
 
 **HDIST_JAIL_MODE**:
     If set, must be either an empty string or ``off``, in which case
@@ -37,10 +36,9 @@ happens.
     return the error ``ENOENT`` ("No such file or directory").
 
 **HDIST_JAIL_LOG**:
-    Non-whitelisted file access will be logged to file. The filename
-    used is ``$HDIST_JAIL_LOG-$PID-XXXXXXX``, where ``XXXXXX`` is
-    determined by ``mkstemp`` to make a unique filename for this
-    process. See ``man mkstemp`` for permissions of the resulting file.
+    Non-whitelisted file access will be logged to the file given.  The
+    file is opened in O_APPEND mode and each entry will be done with
+    a single ``write`` call of size less than ``PIPE_BUF``.
 
 **HDIST_JAIL_STDERR**:
     If set to a non-empty string, logging will happen to stderr. Each
@@ -51,11 +49,12 @@ Log file format
 
 Each entry in the log file has the form::
 
-    path// action
+    pid path// action pid
 
 The `path` is the canonical path name as described below. The canonical
 path can not contain ``//``, so this is used as a terminator, since
-`path` may contain both spaces and newlines.
+`path` may contain both spaces and newlines. `pid` is the PID
+of the process.
 
 `action` is usually the name of the intercepted function
 (e.g., ``open``, ``fopen``), but see below.

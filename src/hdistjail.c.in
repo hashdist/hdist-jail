@@ -99,32 +99,21 @@ static void *checked_malloc(size_t n) {
 /*
     logging
 */
-static FILE *g_logfile = NULL;
+static int g_log_fd = -1;
+static char *g_log_buf = NULL;
 #define STDERR_PREFIX_SIZE 100
 static char g_stderr_prefix[STDERR_PREFIX_SIZE];
 
 static void open_log_file(void) {
-    char *filename;
-    size_t prefix_len;
-    int fd;
-    const char *log_filename_prefix = getenv("HDIST_JAIL_LOG");
-    if (!log_filename_prefix) return;
-    prefix_len = strlen(log_filename_prefix);
-    filename = checked_malloc(prefix_len + 1 + 10 + 1 + 6);
-    strcpy(filename, log_filename_prefix);
-    strcat(filename, "-");
-    snprintf(filename + prefix_len + 1, 10, "%d", getpid());
-    filename[prefix_len + 1 + 9] = 0; /* in case of overflow */
-    strcat(filename, "-XXXXXX");
-    fd = mkstemp(filename);
-    free(filename);
-    if (fd == -1) goto ERROR;
-    g_logfile = fdopen(fd, "w");
-    if (g_logfile == NULL) goto ERROR;
-    return;
- ERROR:
-    fprintf(stderr, "Could not create log file: %s", strerror(errno));
-    exit(EXIT_CODE);
+    const char *log_filename = getenv("HDIST_JAIL_LOG");
+    if (!log_filename) return;
+    g_log_buf = checked_malloc(PIPE_BUF);
+    g_log_fd = (*real_open)(log_filename, O_APPEND | O_CREAT | O_WRONLY, 0600);
+    if (g_log_fd == -1) {
+        fprintf(stderr, "Could not create log file (%s): %s",
+                strerror(errno), log_filename);
+        exit(EXIT_CODE);
+    }
 }
 
 static void open_log(void) {
@@ -140,14 +129,22 @@ static void open_log(void) {
 }
 
 static void close_log(void) {
-    if (g_logfile) {
-        fclose(g_logfile);
+    if (g_log_fd != -1) {
+        close(g_log_fd);
+        free(g_log_buf);
     }
 }
 
 static void log_access(const char *path, const char *funcname) {
-    if (g_logfile) {
-        fprintf(g_logfile, "%s// %s\n", path, funcname);
+    ssize_t n, n_written;
+    if (g_log_fd != -1) {
+        n = snprintf(g_log_buf, PIPE_BUF,
+                     "%d %s// %s\n", (int)getpid(), path, funcname);
+        /* in the case of extremely long message (long filename?), do something
+           half-way sane */
+        g_log_buf[PIPE_BUF - 2] = '<';
+        g_log_buf[PIPE_BUF - 1] = '\n';
+        write(g_log_fd, g_log_buf, n);
     }
     if (g_stderr_prefix[0]) {
         fprintf(stderr, "%s%s(\"%s\", ...)\n", g_stderr_prefix, funcname, path);

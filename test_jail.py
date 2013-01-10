@@ -39,7 +39,6 @@ def fixture():
             tempdir = tempfile.mkdtemp(prefix='jailtest-')
             try:
                 os.mkdir(pjoin(tempdir, 'work'))
-                os.mkdir(pjoin(tempdir, 'log'))
                 return func(tempdir)
             finally:
                 shutil.rmtree(tempdir)
@@ -89,7 +88,8 @@ def run_in_jail(tempdir,
     if jail_mode:
         env['HDIST_JAIL_MODE'] = jail_mode
     if should_log:
-        env['HDIST_JAIL_LOG'] = pjoin(tempdir, 'log', 'log')
+        log_filename = pjoin(tempdir, 'log')
+        env['HDIST_JAIL_LOG'] = log_filename
     if stderr:
         env['HDIST_JAIL_STDERR'] = 'hdistjail: '
 
@@ -122,13 +122,13 @@ def run_in_jail(tempdir,
     if ret != 0:
         raise subprocess.CalledProcessError(cmd, ret)
     lines = [x for x in out.splitlines() if x]
-    logfiles = glob(pjoin(tempdir, 'log', 'log-%d-*' % proc.pid))
     if should_log:
-        assert len(logfiles) == 1
-        with file(logfiles[0]) as f:
-            log = [x[:-1] for x in f.readlines()]
+        with file(log_filename) as f:
+            log_lines = [x[:-1].split(' ', 1) for x in f.readlines()]
+        os.unlink(log_filename)
+        assert all(int(tup[0]) == proc.pid for tup in log_lines)
+        log = [tup[1] for tup in log_lines]
     else:
-        assert len(logfiles) == 0
         log = None
     return log, lines
 

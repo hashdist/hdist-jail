@@ -21,5 +21,8 @@ test_abspath: build/test_abspath
 test: build/hdistjail.so
 	python test_jail.py --nocapture -v
 
+simpletest: build/hdistjail.so
+	LD_PRELOAD=build/hdistjail.so HDIST_JAIL_LOG=jail.log cat hello
+
 clean:
 	rm build/*
