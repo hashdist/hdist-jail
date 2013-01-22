@@ -348,3 +348,4 @@ int {{func}}(const char *p, int oflag, ...) {
 
 
 
+
