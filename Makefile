@@ -1,22 +1,37 @@
 
+CC = gcc
+INSTALL = install
+PREFIX = /usr/local
+
+CFLAGS += -Wall -fPIC -Isrc
+LDFLAGS += -shared -ldl
+
+OBJ = build/faketime.o
+
+SONAME = 1
+LIBS = build/libhdistjail.so.${SONAME}
+
+all: build ${LIBS}
 
 build/hdistjail.c: src/hdistjail.c.in
-	./runjinja.py src/hdistjail.c.in build/hdistjail.c
+	./runjinja.py $< $@
 
-build/hdistjail.so: build build/hdistjail.c src/khash.h src/abspath.h
-	gcc -Isrc -fPIC -Wall -c build/hdistjail.c -o build/hdistjail.o
-	gcc -shared -o build/hdistjail.so build/hdistjail.o -ldl
+build/hdistjail.o: build/hdistjail.c
+	${CC} -o $@ -c ${CFLAGS} $<
 
-build:
-	mkdir build
+build/libhdistjail.so.${SONAME}: build/hdistjail.o
+	${CC} -o $@ -Wl,-soname,libhdistjail.so.${SONAME} $< ${LDFLAGS}
 
-jail: build/hdistjail.so
+clean:
+	@rm -rf build
 
-build/test_abspath: src/test_abspath.c src/abspath.h
-	gcc -Wall -O0 -g -o build/test_abspath src/test_abspath.c
+distclean: clean
+	@echo
 
-test_abspath: build/test_abspath
-	./build/test_abspath
+install: ${LIBS}
+	@echo
+	$(INSTALL) -dm0755 "${DESTDIR}${PREFIX}/lib/"
+	$(INSTALL) -m0644 ${LIBS} "${DESTDIR}${PREFIX}/lib/"
 
 test: build/hdistjail.so
 	python test_jail.py --nocapture -v
@@ -24,5 +39,8 @@ test: build/hdistjail.so
 simpletest: build/hdistjail.so
 	LD_PRELOAD=build/hdistjail.so HDIST_JAIL_LOG=jail.log cat hello
 
-clean:
-	rm build/*
+build:
+	mkdir build
+
+.PHONY: all clean distclean install test simpletest
+
